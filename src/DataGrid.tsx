@@ -1,4 +1,11 @@
-import { forwardRef, useState, useRef, useImperativeHandle, useCallback, useMemo } from 'react';
+import React, {
+  forwardRef,
+  useState,
+  useRef,
+  useImperativeHandle,
+  useCallback,
+  useMemo
+} from 'react';
 import type { Key, RefAttributes } from 'react';
 import { flushSync } from 'react-dom';
 import clsx from 'clsx';
@@ -8,7 +15,9 @@ import {
   viewportDraggingClassname,
   focusSinkClassname,
   rowSelected,
-  rowSelectedWithFrozenCell
+  rowSelectedWithFrozenCell,
+  disabledVerticalScrollClassname,
+  disabledHorizontalScrollClassname
 } from './style';
 import {
   useLayoutEffect,
@@ -60,7 +69,8 @@ import type {
   RowHeightArgs,
   Maybe,
   Renderers,
-  Direction
+  Direction,
+  OuterScrollOptions
 } from './types';
 
 export interface SelectCellState extends Position {
@@ -182,6 +192,7 @@ export interface DataGridProps<R, SR = unknown, K extends Key = Key> extends Sha
   /** @default 'ltr' */
   direction?: Maybe<Direction>;
   'data-testid'?: Maybe<string>;
+  outerScroll?: OuterScrollOptions;
 }
 
 /**
@@ -234,6 +245,7 @@ function DataGrid<R, SR, K extends Key>(
     style,
     rowClass,
     direction: rawDirection,
+    outerScroll,
     // ARIA
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
@@ -284,7 +296,8 @@ function DataGrid<R, SR, K extends Key>(
   /**
    * computed values
    */
-  const [gridRef, gridWidth, gridHeight, isWidthInitialized] = useGridDimensions();
+  const [parentRef, gridRef, gridWidth, gridHeight, offsetTop, isWidthInitialized] =
+    useGridDimensions(outerScroll);
   const headerRowsCount = 1;
   const topSummaryRowsCount = topSummaryRows?.length ?? 0;
   const bottomSummaryRowsCount = bottomSummaryRows?.length ?? 0;
@@ -355,7 +368,8 @@ function DataGrid<R, SR, K extends Key>(
     clientHeight,
     scrollTop,
     expandedGroupIds,
-    enableVirtualization
+    enableVirtualization,
+    offsetTop
   });
 
   const { viewportColumns, flexWidthViewportColumns } = useViewportColumns({
@@ -438,11 +452,20 @@ function DataGrid<R, SR, K extends Key>(
   });
 
   useLayoutEffect(() => {
+    if (!outerScroll) return;
+    const element = parentRef.current;
+    element?.addEventListener('scroll', handleScrollOuter);
+    return () => {
+      element?.removeEventListener('scroll', handleScrollOuter);
+    };
+  });
+
+  useLayoutEffect(() => {
     if (!isWidthInitialized || flexWidthViewportColumns.length === 0) return;
 
     setColumnWidths((columnWidths) => {
       const newColumnWidths = new Map(columnWidths);
-      const grid = gridRef.current!;
+      const grid = parentRef.current!;
 
       for (const column of flexWidthViewportColumns) {
         const measuringCell = grid.querySelector(`[data-measuring-cell-key="${column.key}"]`)!;
@@ -453,13 +476,13 @@ function DataGrid<R, SR, K extends Key>(
 
       return newColumnWidths;
     });
-  }, [isWidthInitialized, flexWidthViewportColumns, gridRef]);
+  }, [isWidthInitialized, flexWidthViewportColumns, parentRef]);
 
   useImperativeHandle(ref, () => ({
-    element: gridRef.current,
+    element: parentRef.current,
     scrollToColumn,
     scrollToRow(rowIdx: number) {
-      const { current } = gridRef;
+      const { current } = parentRef;
       if (!current) return;
       current.scrollTo({
         top: getRowTop(rowIdx),
@@ -481,12 +504,12 @@ function DataGrid<R, SR, K extends Key>(
    * event handlers
    */
   function handleColumnResize(column: CalculatedColumn<R, SR>, width: number | 'max-content') {
-    const { style } = gridRef.current!;
+    const { style } = parentRef.current!;
     const newTemplateColumns = [...templateColumns];
     newTemplateColumns[column.idx] = width === 'max-content' ? width : `${width}px`;
     style.gridTemplateColumns = newTemplateColumns.join(' ');
 
-    const measuringCell = gridRef.current!.querySelector(
+    const measuringCell = parentRef.current!.querySelector(
       `[data-measuring-cell-key="${column.key}"]`
     )!;
     const measuredWidth = measuringCell.getBoundingClientRect().width;
@@ -648,12 +671,29 @@ function DataGrid<R, SR, K extends Key>(
     }
   }
 
-  function handleScroll(event: React.UIEvent<HTMLDivElement>) {
+  function handleScrollOuter(event: Event) {
+    const { scrollTop, scrollLeft } = event.target as Element;
+    flushSync(() => {
+      if (outerScroll?.watchVertical) {
+        setScrollTop(scrollTop);
+      }
+      if (outerScroll?.watchHorizontal) {
+        // scrollLeft is nagative when direction is rtl
+        setScrollLeft(abs(scrollLeft));
+      }
+    });
+  }
+
+  function handleScrollOriginal(event: React.UIEvent<HTMLDivElement>) {
     const { scrollTop, scrollLeft } = event.currentTarget;
     flushSync(() => {
-      setScrollTop(scrollTop);
-      // scrollLeft is nagative when direction is rtl
-      setScrollLeft(abs(scrollLeft));
+      if (!outerScroll?.watchVertical) {
+        setScrollTop(scrollTop);
+      }
+      if (!outerScroll?.watchHorizontal) {
+        // scrollLeft is nagative when direction is rtl
+        setScrollLeft(abs(scrollLeft));
+      }
     });
     onScroll?.(event);
   }
@@ -772,14 +812,14 @@ function DataGrid<R, SR, K extends Key>(
       setSelectedPosition({ ...position, mode: 'EDIT', row, originalRow: row });
     } else if (isSamePosition(selectedPosition, position)) {
       // Avoid re-renders if the selected cell state is the same
-      scrollIntoView(gridRef.current?.querySelector('[tabindex="0"]'));
+      scrollIntoView(parentRef.current?.querySelector('[tabindex="0"]'));
     } else {
       setSelectedPosition({ ...position, mode: 'SELECT' });
     }
   }
 
   function scrollToColumn(idx: number): void {
-    const { current } = gridRef;
+    const { current } = parentRef;
     if (!current) return;
 
     if (idx > lastFrozenColumnIndex) {
@@ -1169,7 +1209,9 @@ function DataGrid<R, SR, K extends Key>(
       className={clsx(
         rootClassname,
         {
-          [viewportDraggingClassname]: isDragging
+          [viewportDraggingClassname]: isDragging,
+          [disabledVerticalScrollClassname]: outerScroll?.watchVertical,
+          [disabledHorizontalScrollClassname]: outerScroll?.watchHorizontal
         },
         className
       )}
@@ -1196,7 +1238,7 @@ function DataGrid<R, SR, K extends Key>(
       }
       dir={direction}
       ref={gridRef}
-      onScroll={handleScroll}
+      onScroll={handleScrollOriginal}
       onKeyDown={handleKeyDown}
       data-testid={testId}
     >

@@ -111,6 +111,9 @@ export default function Nav({ direction, onDirectionChange }: Props) {
       <NavLink to="/million-cells" end className={getActiveClassname}>
         A Million Cells
       </NavLink>
+      <NavLink to="/million-cells-with-outer-parent" end className={getActiveClassname}>
+        A Million Cells With Outer Parent
+      </NavLink>
       <NavLink to="/no-rows" end className={getActiveClassname}>
         No Rows
       </NavLink>

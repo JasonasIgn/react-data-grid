@@ -20,6 +20,7 @@ interface ViewportRowsArgs<R> {
   rowGrouper: Maybe<(rows: readonly R[], columnKey: string) => Record<string, readonly R[]>>;
   expandedGroupIds: Maybe<ReadonlySet<unknown>>;
   enableVirtualization: boolean;
+  offsetTop: number;
 }
 
 // TODO: https://github.com/microsoft/TypeScript/issues/41808
@@ -35,7 +36,8 @@ export function useViewportRows<R>({
   groupBy,
   rowGrouper,
   expandedGroupIds,
-  enableVirtualization
+  enableVirtualization,
+  offsetTop
 }: ViewportRowsArgs<R>) {
   const [groupedRows, rowsCount] = useMemo(() => {
     if (groupBy.length === 0 || rowGrouper == null) return [undefined, rawRows.length];
@@ -176,8 +178,8 @@ export function useViewportRows<R>({
 
   if (enableVirtualization) {
     const overscanThreshold = 4;
-    const rowVisibleStartIdx = findRowIdx(scrollTop);
-    const rowVisibleEndIdx = findRowIdx(scrollTop + clientHeight);
+    const rowVisibleStartIdx = findRowIdx(scrollTop - offsetTop);
+    const rowVisibleEndIdx = findRowIdx(scrollTop + clientHeight - offsetTop);
     rowOverscanStartIdx = max(0, rowVisibleStartIdx - overscanThreshold);
     rowOverscanEndIdx = min(rows.length - 1, rowVisibleEndIdx + overscanThreshold);
   }

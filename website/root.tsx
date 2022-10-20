@@ -18,6 +18,7 @@ import HeaderFilters from './demos/HeaderFilters';
 import InfiniteScrolling from './demos/InfiniteScrolling';
 import MasterDetail from './demos/MasterDetail';
 import MillionCells from './demos/MillionCells';
+import MillionCellsWithOuterParent from './demos/MillionCellsWithOuterParent';
 import NoRows from './demos/NoRows';
 import ResizableGrid from './demos/Resizable';
 import RowsReordering from './demos/RowsReordering';
@@ -105,6 +106,10 @@ function Root() {
           <Route path="infinite-scrolling" element={<InfiniteScrolling direction={direction} />} />
           <Route path="master-detail" element={<MasterDetail direction={direction} />} />
           <Route path="million-cells" element={<MillionCells direction={direction} />} />
+          <Route
+            path="million-cells-with-outer-parent"
+            element={<MillionCellsWithOuterParent direction={direction} />}
+          />
           <Route path="no-rows" element={<NoRows direction={direction} />} />
           <Route path="resizable-grid" element={<ResizableGrid direction={direction} />} />
           <Route path="rows-reordering" element={<RowsReordering direction={direction} />} />

@@ -103,6 +103,20 @@ const root = css`
 
 export const rootClassname = `rdg ${root}`;
 
+export const disabledVerticalScrollClassname = css`
+  @layer rdg.Root {
+    overflow-y: hidden;
+    height: auto;
+  }
+`;
+
+export const disabledHorizontalScrollClassname = css`
+  @layer rdg.Root {
+    display: inline-grid;
+    overflow-x: hidden;
+  }
+`;
+
 const viewportDragging = css`
   @layer rdg.Root {
     user-select: none;

@@ -66,6 +66,12 @@ export interface CalculatedColumn<TRow, TSummaryRow = unknown> extends Column<TR
   readonly formatter: (props: FormatterProps<TRow, TSummaryRow>) => ReactNode;
 }
 
+export interface OuterScrollOptions {
+  ref?: React.RefObject<HTMLDivElement>;
+  watchHorizontal?: boolean;
+  watchVertical?: boolean;
+}
+
 export interface Position {
   readonly idx: number;
   readonly rowIdx: number;
