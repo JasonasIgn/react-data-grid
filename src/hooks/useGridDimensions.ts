@@ -13,7 +13,7 @@ export function useGridDimensions(
   isWidthInitialized: boolean
 ] {
   const gridRef = useRef<HTMLDivElement>(null);
-  const dynamicParentRef = outerScroll?.ref ?? gridRef;
+  const parentRef = outerScroll?.ref ?? gridRef;
   const [offsetTop, setOffsetTop] = useState(0);
   const [inlineSize, setInlineSize] = useState(1);
   const [blockSize, setBlockSize] = useState(1);
@@ -26,14 +26,14 @@ export function useGridDimensions(
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (ResizeObserver == null) return;
 
-    const refForWidth = outerScroll?.watchHorizontal ? dynamicParentRef : gridRef;
+    const refForWidth = outerScroll?.watchHorizontal ? parentRef : gridRef;
     const { clientWidth, offsetWidth } = refForWidth.current!;
     const { width } = refForWidth.current!.getBoundingClientRect();
     const initialWidth = width - offsetWidth + clientWidth;
     setInlineSize(initialWidth);
     setWidthInitialized(true);
 
-    const refForHeight = outerScroll?.watchVertical ? dynamicParentRef : gridRef;
+    const refForHeight = outerScroll?.watchVertical ? parentRef : gridRef;
     const { clientHeight, offsetHeight } = refForHeight.current!;
     const { offsetTop } = gridRef.current!;
     const { height } = refForHeight.current!.getBoundingClientRect();
@@ -64,7 +64,7 @@ export function useGridDimensions(
     });
 
     if (outerScroll) {
-      outerScrollresizeObserver.observe(dynamicParentRef.current!);
+      outerScrollresizeObserver.observe(parentRef.current!);
     }
 
     if (!outerScroll?.watchHorizontal || !outerScroll.watchVertical) {
@@ -82,5 +82,5 @@ export function useGridDimensions(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return [dynamicParentRef, gridRef, inlineSize, blockSize, offsetTop, isWidthInitialized];
+  return [parentRef, gridRef, inlineSize, blockSize, offsetTop, isWidthInitialized];
 }
